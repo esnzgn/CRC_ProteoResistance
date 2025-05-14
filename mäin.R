@@ -4,16 +4,18 @@ rm(list = ls())
 source("./reqs.R")
 
 # Step 1: Load data
-raw_data <- read_excel("../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx")
+raw_data <- read_excel("../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx", sheet = 2)
 
-# length(unique(raw_data$`Gene Name`))
+# Basic filtering
+raw_data <- raw_data %>%
+  filter(`Gene Name` != "NA") %>%
+  filter(as.numeric(`Amount PSMs`) >= 2) %>%
+  distinct(`Gene Name`, .keep_all = TRUE)
 
-# Extract metadata
-expr_cols <- grep("tmt18plex", colnames(raw_data), value = TRUE)
-metadata <- tibble(
-  name = expr_cols,
-  condition = rep(c("HCT116_parental", "SW620_parental", "HCT116_TH9619", "SW620_TH9619", "HCT116_MTX", "SW620_MTX"), each = 3)
-)
+expr_cols <- grep("tmt18plex_\\d+", names(raw_data), value = TRUE)
+expr <- raw_data[, expr_cols]
+row.names(expr) <- raw_data$`Gene Name`
+
 
 # Step 2: Create QFeatures object
 expr_mat <- raw_data %>% select(all_of(expr_cols)) %>% as.matrix()
