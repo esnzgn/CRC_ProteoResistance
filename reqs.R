@@ -1,0 +1,16 @@
+# req
+# install.packages(c("EnhancedVolcano", "clusterProfiler", "org.Hs.eg.db"))
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#   install.packages("BiocManager")
+# BiocManager::install(c("limma", "EnhancedVolcano", "clusterProfiler", "org.Hs.eg.db"))
+# Load libraries
+library(QFeatures)
+library(SummarizedExperiment)
+library(dplyr)
+library(readxl)
+library(limma)
+library(ggplot2)
+library(EnhancedVolcano)
+library(pheatmap)
+library(clusterProfiler)
+library(org.Hs.eg.db)
