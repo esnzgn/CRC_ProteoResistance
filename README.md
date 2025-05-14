@@ -19,12 +19,12 @@
 ## 🔬 Analysis Pipeline
 
 - [x] Data loading and filtering
--- [x] Data cleaning
--- [x] extracted and converted the expression matrix
--- [x] Built the sample metadata (colData)
--- [x] Built the feature metadata (rowData)
--- [x] Created a SummarizedExperiment object
--- [x] Wrapped everything in a QFeatures object for downstream quantitative proteomics analysis 🎉
+-   [x] Data cleaning
+-   [x] extracted and converted the expression matrix
+-   [x] Built the sample metadata (colData)
+-   [x] Built the feature metadata (rowData)
+-   [x] Created a SummarizedExperiment object
+-   [x] Wrapped everything in a QFeatures object for downstream quantitative proteomics analysis 🎉
 - [ ] Contaminant Filtering (e.g., GeneID == "NA", low PSMs, zero values)
 - [ ] Data Wrangling into QFeatures
 - [ ] Normalization & Quality Control
