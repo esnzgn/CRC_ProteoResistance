@@ -18,26 +18,23 @@
 
 ## 🔬 Analysis Pipeline
 
-- [ ] Data loading and filtering
-- [ ] Differential expression analysis using limma
-- [ ] Visualization:
-  - [ ] Volcano plots
-  - [ ] PCA plots
-  - [ ] Heatmaps of top proteins
-- [ ] Functional enrichment (GO/KEGG)
-- [ ] Reporting significant resistance-related hits
+- [*] Data loading and filtering
+- [ ] Contaminant Filtering (e.g., GeneID == "NA", low PSMs, zero values)
+- [ ] Data Wrangling into QFeatures
+- [ ] Normalization & Quality Control
+- [ ] Sample Annotation & Experimental Design Setup
+- [ ] Peptide-to-Protein Summarization
+- [ ] Statistical Analysis (MSqRob2 or MSqRob2TMT)
+- [ ] DEG Detection Across Contrasts
+- [ ] Visualization (Volcano, Heatmap, PCA)
+- [ ] Functional Enrichment (GO/KEGG using clusterProfiler)
 
 ## 📁 Folder Overview
 
-- `data/`: Raw input Excel files
-- `scripts/`: R scripts for analysis and plotting
+- `data/`: Raw input Excel file(s) from ../ same name but _data sufixed
+- `scripts/`: R scripts for analysis and plotting on the root
 - `results/`: Output tables and plots
 
 ## 📚 Dependencies
 
-```r
-# Install required packages
-install.packages(c("tidyverse", "readxl", "pheatmap", "ggfortify"))
-if (!requireNamespace("BiocManager", quietly = TRUE))
-    install.packages("BiocManager")
-BiocManager::install(c("limma", "EnhancedVolcano", "clusterProfiler", "org.Hs.eg.db"))
+in reqs.R file
