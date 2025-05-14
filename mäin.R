@@ -14,6 +14,7 @@ raw_data <- raw_data %>%
 
 expr_cols <- grep("tmt18plex_\\d+", names(raw_data), value = TRUE)
 expr <- raw_data[, expr_cols]
+
 row.names(expr) <- raw_data$`Gene Name`
 
 
