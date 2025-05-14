@@ -21,6 +21,7 @@ row.names(expr) <- raw_data$`Gene Name`
 expr_mat <- raw_data %>% select(all_of(expr_cols)) %>% as.matrix()
 rownames(expr_mat) <- raw_data$`Gene Name`
 
+
 se <- SummarizedExperiment(assays = list(counts = expr_mat))
 colData(se) <- DataFrame(metadata)
 qf <- QFeatures(list(proteins = se))
