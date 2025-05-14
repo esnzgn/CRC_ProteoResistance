@@ -18,17 +18,27 @@
 
 ## 🔬 Analysis Pipeline
 
-- [x] Data loading and filtering
+- [x] Data loading
 -   [x] Data cleaning
 -   [x] extracted and converted the expression matrix
 -   [x] Built the sample metadata (colData)
 -   [x] Built the feature metadata (rowData)
 -   [x] Created a SummarizedExperiment object
 -   [x] Wrapped everything in a QFeatures object for downstream quantitative proteomics analysis 🎉
-- [ ] Contaminant Filtering (e.g., GeneID == "NA", low PSMs, zero values)
-- [ ] Data Wrangling into QFeatures
-- [ ] Normalization & Quality Control
-- [ ] Sample Annotation & Experimental Design Setup
+-   [x] Preprocessing and Quality Control (QC) Summary
+-   [x] Missing Value Assessment:
+-   [x] All 18 samples had exactly 8 missing values, which is low and uniform.
+-   [x] Over 10,771 proteins had no missing values.
+-   [x] Only 8 proteins had 18 missing values (likely dropped after filtering).
+-   [x] Filtering and Imputation:
+-   [x] You applied a 2/3 presence threshold: proteins retained if observed in ≥12 samples.
+-   [x] Resulted in a matrix of 10,771 proteins × 18 samples.
+-   [x] Used impute.knn() from the impute package to handle remaining NAs.
+-   [x] PCA & EDA:
+-   [x] PCA plot shows clear sample separation, though the condition label needs refinement (currently "unknown").
+-   [x] Boxplots of log2 intensities per sample show consistent distributions.
+-   [x] Sample correlation heatmap reveals clear clustering, indicating batch or condition-related grouping. 
+
 - [ ] Peptide-to-Protein Summarization
 - [ ] Statistical Analysis (MSqRob2 or MSqRob2TMT)
 - [ ] DEG Detection Across Contrasts

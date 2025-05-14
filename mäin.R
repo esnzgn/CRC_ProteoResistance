@@ -72,7 +72,75 @@ se <- SummarizedExperiment(
 # Optional: Wrap into QFeatures object
 qf <- QFeatures(list(proteins = se))
 
+# QC ####
+# Count missing per sample
+# Extract the expression matrix correctly
+expr_matrix <- assay(qf[["proteins"]], "log2_Intensity")
 
+# Now compute missing values per sample (column-wise)
+missing_counts <- colSums(is.na(expr_matrix))
 
+# View missing data
+print(missing_counts)
+
+# Optional: visualize
+# Prepare the data frame for plotting
+missing_df <- data.frame(
+  Sample = names(missing_counts),
+  MissingValues = missing_counts
+)
+
+# Plot using ggplot
+ggplot(missing_df, aes(x = reorder(Sample, MissingValues), y = MissingValues)) +
+  geom_bar(stat = "identity") +
+  coord_flip() +
+  theme_minimal(base_size = 12) +
+  labs(title = "Missing values per sample",
+       x = "Sample",
+       y = "Count of missing values") +
+  theme(axis.text.y = element_text(size = 8))
+
+protein_missing_counts <- rowSums(is.na(expr_matrix))
+summary(protein_missing_counts)
+table(protein_missing_counts)
+
+ggplot(data.frame(MissingCount = protein_missing_counts), aes(x = MissingCount)) +
+  geom_histogram(binwidth = 1, fill = "steelblue") +
+  theme_minimal() +
+  labs(title = "Missing value distribution across proteins",
+       x = "Number of missing values",
+       y = "Number of proteins")
+
+threshold <- ceiling(ncol(expr_matrix) * 2 / 3)
+expr_matrix_filtered <- expr_matrix[rowSums(!is.na(expr_matrix)) >= threshold, ]
+dim(expr_matrix_filtered)  # Check how many proteins remain
+
+expr_matrix_imputed <- impute.knn(expr_matrix_filtered)$data
+
+prcomp_res <- prcomp(t(expr_matrix_imputed), scale. = TRUE)
+
+autoplot(prcomp_res, data = as.data.frame(colData(qf[["proteins"]])), colour = "condition") +
+  theme_minimal() +
+  labs(title = "PCA of Samples", x = "PC1", y = "PC2")
+
+# EDA ####
+expr_long <- melt(expr_matrix_imputed)
+colnames(expr_long) <- c("Protein", "Sample", "Log2Intensity")
+
+ggplot(expr_long, aes(x = Sample, y = Log2Intensity)) +
+  geom_boxplot() +
+  theme_minimal(base_size = 10) +
+  coord_flip() +
+  labs(title = "Log2 Intensities per Sample")
+
+sample_cor <- cor(expr_matrix_imputed, method = "pearson")
+pheatmap(sample_cor, main = "Sample Correlation Heatmap")
+
+# dep ####
+se <- SummarizedExperiment(
+  assays = list(log2_Intensity = expr_matrix_imputed),
+  rowData = rowData(qf[["proteins"]]),
+  colData = colData(qf[["proteins"]])
+)
 
 
