@@ -18,7 +18,7 @@
 
 ## 🔬 Analysis Pipeline
 
-- [*] Data loading and filtering
+- [x] Data loading and filtering
 - [ ] Contaminant Filtering (e.g., GeneID == "NA", low PSMs, zero values)
 - [ ] Data Wrangling into QFeatures
 - [ ] Normalization & Quality Control
