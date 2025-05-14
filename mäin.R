@@ -25,6 +25,7 @@ se <- SummarizedExperiment(assays = list(counts = expr_mat))
 colData(se) <- DataFrame(metadata)
 qf <- QFeatures(list(proteins = se))
 
+
 # Step 3: Prepare data for MSqRob2TMT
 # This will extract peptide-level QFeatures and generate a structure ready for msqrob2tmt
 qf_tmt <- prepareQFeatures(qf, i = 1, assayName = "peptides")
