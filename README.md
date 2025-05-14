@@ -16,7 +16,7 @@
 - Functional enrichment (GO, KEGG) of resistance-associated proteins
 - Identification of unique protein markers of resistance to TH9619
 
-## 🔬 Analysis Pipeline
+## 🔬 Analysis Pipeline and rep
 
 - [x] Data loading
 -   [x] Data cleaning
@@ -38,7 +38,6 @@
 -   [x] PCA plot shows clear sample separation, though the condition label needs refinement (currently "unknown").
 -   [x] Boxplots of log2 intensities per sample show consistent distributions.
 -   [x] Sample correlation heatmap reveals clear clustering, indicating batch or condition-related grouping. 
-
 - [ ] Peptide-to-Protein Summarization
 - [ ] Statistical Analysis (MSqRob2 or MSqRob2TMT)
 - [ ] DEG Detection Across Contrasts
