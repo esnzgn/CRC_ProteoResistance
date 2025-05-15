@@ -137,10 +137,307 @@ sample_cor <- cor(expr_matrix_imputed, method = "pearson")
 pheatmap(sample_cor, main = "Sample Correlation Heatmap")
 
 # dep ####
+# Make sure protein IDs exist in the annotation
+head(row_annot$protein_id)
+
+# Set rownames of both to protein_id
+rownames(expr_matrix) <- row_annot$protein_id
+rownames(row_annot) <- row_annot$protein_id
+
+library(SummarizedExperiment)
+
 se <- SummarizedExperiment(
-  assays = list(log2_Intensity = expr_matrix_imputed),
-  rowData = rowData(qf[["proteins"]]),
-  colData = colData(qf[["proteins"]])
+  assays = list(log2_Intensity = expr_matrix),
+  rowData = row_annot,
+  colData = DataFrame(sample_meta)
 )
+
+validObject(se)
+
+unique(colData(se)$condition)
+table(colData(se)$condition)
+
+
+colData = DataFrame(sample_meta)
+rownames(sample_meta)
+colnames(se)
+
+sample_meta$condition <- c(
+  "hct116_parental", "sw620_parental", "hct116_parental",
+  "sw620_parental", "hct116_parental", "sw620_parental",
+  "hct116_th9616_r", "sw620_th9619_r", "hct116_th9616_r",
+  "sw620_th9619_r", "hct116_th9616_r", "sw620_th9619_r",
+  "hct116_mtx_r", "sw620_mtx_r", "hct116_mtx_r",
+  "sw620_mtx_r", "hct116_mtx_r", "sw620_mtx_r"
+)
+
+colData(se)$condition <- sample_meta$condition
+
+table(colData(se)$condition)
+
+
+# Subset to HCT116 samples only
+se_hct116 <- se[, grepl("^hct116", colData(se)$condition)]
+
+# Check sample conditions
+table(colData(se_hct116)$condition)
+
+se_hct116 <- normalizeD(se_hct116, i = "log2_Intensity", name = "norm")
+
+# Manually normalize by median-centering (column-wise)
+assay(se_hct116, "norm") <- sweep(
+  assay(se_hct116, "log2_Intensity"),
+  2,
+  apply(assay(se_hct116, "log2_Intensity"), 2, median, na.rm = TRUE),
+  FUN = "-"
+)
+
+# Confirm assay was added
+assays(se_hct116)
+
+se_hct116 <- aggregateFeatures(
+  se_hct116,
+  i = "norm",
+  fcol = "protein_id", # or another suitable feature column
+  name = "protein",
+  na.rm = TRUE
+)
+
+se_hct116 <- msqrob2::msqrob(object = se_hct116, formula = ~condition, overwrite = TRUE)
+
+
+msqrob2::getCoef(rowData(se_hct116)[["protein"]]$msqrobModels[[1]])
+
+
+objs <- mget(ls("package:ggplot2"), envir = as.environment("package:ggplot2"))
+funcs <- objs[sapply(objs, is.function)]
+names(funcs)
+
+
+# Check structure of rowData
+head(rowData(se_hct116))
+
+# Access one model correctly
+model1 <- rowData(se_hct116)$msqrobModels[[1]]
+
+# Check if model is not NULL
+if (!is.null(model1)) {
+  coef1 <- msqrob2::getCoef(model1)
+  print(coef1)
+}
+
+
+coefs <- lapply(rowData(se_hct116)$msqrobModels, function(model) {
+  if (!is.null(model)) msqrob2::getCoef(model) else NA
+})
+names(coefs) <- rownames(se_hct116)
+
+coef_df <- do.call(rbind, lapply(seq_along(coefs), function(i) {
+  coef_row <- coefs[[i]]
+  if (!is.null(coef_row)) {
+    data.frame(protein = rownames(se_hct116)[i], t(coef_row))
+  } else {
+    data.frame(protein = rownames(se_hct116)[i], NA)
+  }
+}))
+
+
+coef_df <- lapply(seq_along(coefs), function(i) {
+  coef_row <- coefs[[i]]
+  if (!is.null(coef_row)) {
+    # Convert to data frame and add protein name
+    as.data.frame(t(coef_row)) %>%
+      mutate(protein = rownames(se_hct116)[i])
+  } else {
+    # Return NA row with protein name
+    data.frame(protein = rownames(se_hct116)[i], NA)
+  }
+}) %>%
+  bind_rows()
+
+table(sapply(coefs, is.null))
+
+which(sapply(coefs, is.null))[1:10]
+
+# Get all unique coefficient names
+all_coef_names <- unique(unlist(lapply(coefs, function(x) if (!is.null(x)) names(x))))
+
+# Build data frame safely
+coef_df <- lapply(seq_along(coefs), function(i) {
+  coef_row <- coefs[[i]]
+  if (!is.null(coef_row) && length(coef_row) == length(all_coef_names)) {
+    out <- as.data.frame(t(coef_row))
+  } else if (!is.null(coef_row)) {
+    # If coef_row is not null but the length is wrong, fill with NAs and give a warning
+    warning(sprintf("Protein %s has coefficient length %d ≠ expected %d. Filling with NAs.",
+                    rownames(se_hct116)[i], length(coef_row), length(all_coef_names)))
+    out <- as.data.frame(setNames(as.list(rep(NA, length(all_coef_names))), all_coef_names))
+  } else {
+    out <- as.data.frame(setNames(as.list(rep(NA, length(all_coef_names))), all_coef_names))
+  }
+  out$protein <- rownames(se_hct116)[i]
+  out
+}) %>% bind_rows()
+
+if (!is.null(coef_row) && length(coef_row) == length(all_coef_names)) {
+  coef_row <- setNames(coef_row, all_coef_names)
+  out <- as.data.frame(t(coef_row))
+}
+
+coef_df <- lapply(seq_along(coefs), function(i) {
+  coef_row <- coefs[[i]]
+  
+  if (!is.null(coef_row) && length(coef_row) == length(all_coef_names)) {
+    coef_row <- setNames(coef_row, all_coef_names)
+    out <- as.data.frame(t(coef_row))
+  } else {
+    if (!is.null(coef_row)) {
+      warning(sprintf("Protein %s has coefficient length %d ≠ expected %d. Filling with NAs.",
+                      rownames(se_hct116)[i], length(coef_row), length(all_coef_names)))
+    }
+    out <- as.data.frame(setNames(as.list(rep(NA, length(all_coef_names))), all_coef_names))
+  }
+  
+  out$protein <- rownames(se_hct116)[i]
+  out
+}) %>% bind_rows()
+
+# Optional cleanup of accidental columns like "V1"
+coef_df <- coef_df[, !(names(coef_df) %in% c("V1", "X.Intercept."))]
+
+sum(complete.cases(coef_df[, all_coef_names]))
+
+coef_df %>%
+  arrange(desc(abs(conditionhct116_th9616_r))) %>%
+  head(10)
+
+coef_df_long <- coef_df %>%
+  tidyr::pivot_longer(cols = all_coef_names, names_to = "term", values_to = "estimate")
+
+ggplot(coef_df_long, aes(x = estimate)) +
+  geom_histogram(bins = 50) +
+  facet_wrap(~ term, scales = "free_x") +
+  theme_minimal() +
+  labs(title = "Distribution of model coefficients", x = "Estimate", y = "Count")
+
+L <- makeContrast(
+  "conditionhct116_th9616_r - conditionhct116_parental = 0",
+  parameterNames = c("conditionhct116_parental", "conditionhct116_th9616_r")
+)
+se_hct116 <- hypothesisTest(se_hct116, contrast = L)
+
+# Extract name of contrast you used
+colnames(L)
+# [1] "conditionhct116_th9616_r - conditionhct116_parental"
+
+# Use it to get the DE results:
+res <- rowData(se_hct116)[["protein"]][[colnames(L)]]
+
+# Check rowData structure
+head(rowData(se_hct116))
+
+# Extract result for TH9616-R vs Parental
+res <- rowData(se_hct116)[["conditionhct116_th9616_r - conditionhct116_parental"]]
+str(res)  # should now show a data.frame with logFC, pval, adjPval
+
+ggplot(res, aes(x = logFC, y = -log10(pval), color = adjPval < 0.05)) +
+  geom_point(alpha = 0.7) +
+  theme_minimal() +
+  scale_color_manual(values = c("black", "red")) +
+  labs(
+    title = "TH9616-R vs Parental",
+    x = "log2 Fold Change",
+    y = "-log10(p-value)"
+  )
+
+L_mtx <- makeContrast(
+  "conditionhct116_mtx_r - conditionhct116_parental = 0",
+  parameterNames = c("conditionhct116_parental", "conditionhct116_mtx_r")
+)
+se_hct116 <- hypothesisTest(se_hct116, contrast = L_mtx, overwrite = TRUE)
+
+se_hct116 <- hypothesisTest(
+  object = se_hct116,
+  contrast = L_mtx,
+  overwrite = TRUE,
+  resultsColumnNamePrefix = "MTX_vs_Parental"
+)
+
+res_mtx <- rowData(se_hct116)[["MTX_vs_Parentalconditionhct116_mtx_r"]]
+
+summary(res_mtx$logFC)
+summary(res_mtx$pval)
+
+ggplot(res_mtx, aes(x = logFC, y = -log10(pval), color = adjPval < 0.05)) +
+  geom_point(alpha = 0.7) +
+  theme_minimal() +
+  scale_color_manual(values = c("black", "red")) +
+  labs(
+    title = "MTX-R vs Parental",
+    x = "log2 Fold Change",
+    y = "-log10(p-value)"
+  )
+
+
+# Filter and preserve rownames as a column
+top_hits <- res_mtx %>%
+  dplyr::filter(adjPval < 0.05) %>%
+  dplyr::arrange(desc(abs(logFC))) %>%
+  dplyr::mutate(protein = rownames(.) )
+
+head(top_hits, 10)
+
+
+# Extract UniProt Accession
+top_hits <- top_hits %>%
+  mutate(
+    accession = sub(".*\\|(.*?)\\|.*", "\\1", protein),
+    gene_name = sub(".*\\|.*\\|(.*?)_HUMAN", "\\1", protein)
+  )
+
+fetch_uniprot_info <- function(accession) {
+  url <- paste0("https://rest.uniprot.org/uniprotkb/", accession, ".json")
+  res <- GET(url)
+  
+  if (status_code(res) == 200) {
+    info <- fromJSON(content(res, as = "text", encoding = "UTF-8"))
+    
+    # Safely extract full name (check if recommendedName exists)
+    full_name <- tryCatch({
+      if (!is.null(info$proteinDescription$recommendedName$fullName$value)) {
+        info$proteinDescription$recommendedName$fullName$value
+      } else if (!is.null(info$proteinDescription$submissionNames[[1]]$fullName$value)) {
+        info$proteinDescription$submissionNames[[1]]$fullName$value
+      } else {
+        NA
+      }
+    }, error = function(e) NA)
+    
+    # Safely extract gene name
+    gene <- tryCatch({
+      if (!is.null(info$genes[[1]]$geneName$value)) {
+        info$genes[[1]]$geneName$value
+      } else {
+        NA
+      }
+    }, error = function(e) NA)
+    
+    data.frame(
+      accession = accession,
+      full_name = full_name,
+      gene = gene,
+      stringsAsFactors = FALSE
+    )
+  } else {
+    message("Failed to fetch for: ", accession)
+    data.frame(accession = accession, full_name = NA, gene = NA)
+  }
+}
+
+# Annotate a subset (e.g. top 10) to avoid throttling
+annotations <- lapply(head(top_hits$accession, 200), fetch_uniprot_info) %>% bind_rows()
+
+# Merge with top hits
+ 
 
 
