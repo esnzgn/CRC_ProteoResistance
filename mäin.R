@@ -436,8 +436,9 @@ fetch_uniprot_info <- function(accession) {
 
 # Annotate a subset (e.g. top 10) to avoid throttling
 annotations <- lapply(head(top_hits$accession, 200), fetch_uniprot_info) %>% bind_rows()
+print(annotations)
 
 # Merge with top hits
- 
+google  <- left_join(top_hits, annotations, by = "accession")
 
 
