@@ -38,6 +38,11 @@
 -   [x] PCA plot shows clear sample separation, though the condition label needs refinement (currently "unknown").
 -   [x] Boxplots of log2 intensities per sample show consistent distributions.
 -   [x] Sample correlation heatmap reveals clear clustering, indicating batch or condition-related grouping. 
+-   [x] 10779 rows: proteins (with names like "sp|A0A0B4J2F0|PIOS1_HUMAN")
+-   [x] 18 columns: samples (with names like "hct116_parental_..._tmt18plex_126")
+-   [x] rowData: includes protein_id, gene_name, description
+-   [x] colData: includes condition for downstream modeling
+-   [x] alidObject(se) returns TRUE → no internal issues
 - [ ] Peptide-to-Protein Summarization
 - [ ] Statistical Analysis (MSqRob2 or MSqRob2TMT)
 - [ ] DEG Detection Across Contrasts
