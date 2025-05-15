@@ -20,5 +20,8 @@ library(ggfortify)
 library(reshape2)
 library(pheatmap)
 library(SummarizedExperiment)
+library(tidyr)
+library(httr)
+library(jsonlite)
 
 
