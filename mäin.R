@@ -441,4 +441,26 @@ print(annotations)
 # Merge with top hits
 google  <- left_join(top_hits, annotations, by = "accession")
 
+head(google)
+
+write.csv(google, "MTX_vs_Parental_annotated_hits.csv", row.names = FALSE)
+
+ggplot(google, aes(x = logFC, y = -log10(pval), color = adjPval < 0.05)) +
+  geom_point(alpha = 0.7) +
+  geom_text(data = subset(google, adjPval < 0.05 & abs(logFC) > 1.5),
+            aes(label = gene_name), vjust = 1.5, hjust = 0.5, size = 3) +
+  scale_color_manual(values = c("black", "red")) +
+  theme_minimal() +
+  labs(title = "MTX-R vs Parental (Annotated Top Hits)",
+       x = "log2 Fold Change", y = "-log10(p-value)")
+
+sig_genes <- na.omit(unique(google$gene_name[google$adjPval < 0.05]))
+write.table(sig_genes, "sig_genes_mtx_vs_parental.txt", quote = FALSE, row.names = FALSE, col.names = FALSE)
+
+# r marddown ####
+
+
+
+
+
 
