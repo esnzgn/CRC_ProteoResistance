@@ -457,6 +457,38 @@ ggplot(google, aes(x = logFC, y = -log10(pval), color = adjPval < 0.05)) +
 sig_genes <- na.omit(unique(google$gene_name[google$adjPval < 0.05]))
 write.table(sig_genes, "sig_genes_mtx_vs_parental.txt", quote = FALSE, row.names = FALSE, col.names = FALSE)
 
+#enrichment ####
+# Your significant gene symbols (top hits)
+gene_symbols <- c("SCG2", "APOC3", "DHFR", "FDFT1", "MB", "MIS18B", "APOBEC3G", "DCLK1", "ANLN", "MSMO1")
+
+# Convert gene symbols to Entrez IDs
+entrez_ids <- bitr(gene_symbols, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+
+# GO enrichment (Biological Process)
+ego_bp <- enrichGO(gene = entrez_ids$ENTREZID,
+                   OrgDb = org.Hs.eg.db,
+                   ont = "BP",
+                   pAdjustMethod = "BH",
+                   pvalueCutoff = 0.05,
+                   qvalueCutoff = 0.2,
+                   readable = TRUE)
+
+# KEGG pathway enrichment
+ekegg <- enrichKEGG(gene = entrez_ids$ENTREZID,
+                    organism = 'hsa',
+                    pvalueCutoff = 0.05)
+
+# Plot top GO BP terms
+dotplot(ego_bp, showCategory = 10, title = "GO Biological Process Enrichment") + theme_minimal()
+
+# Plot top KEGG pathways
+dotplot(ekegg, showCategory = 10, title = "KEGG Pathway Enrichment") + theme_minimal()
+
+# View results
+head(as.data.frame(ego_bp))
+head(as.data.frame(ekegg))
+
+
 # r marddown ####
 
 
