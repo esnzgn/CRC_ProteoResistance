@@ -4,6 +4,12 @@
 #   install.packages("BiocManager")
 # BiocManager::install(c("ggfortify", "msqrob2", "EnhancedVolcano", "clusterProfiler", "org.Hs.eg.db"))
 # Load libraries
+# Install only if not already installed
+# if (!requireNamespace("pathview", quietly = TRUE)) {
+#   BiocManager::install("pathview")
+# }
+
+library(pathview)
 library(QFeatures)
 library(SummarizedExperiment)
 library(readxl)
