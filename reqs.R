@@ -23,5 +23,6 @@ library(SummarizedExperiment)
 library(tidyr)
 library(httr)
 library(jsonlite)
+library(enrichplot)
 
 
