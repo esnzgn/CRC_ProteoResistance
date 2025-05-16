@@ -538,6 +538,24 @@ pathview(gene.data = gene_entrez,
          high = list(gene="red"),
          node.sum = "max")
 
+# Download KGML file
+kegg_url <- "https://rest.kegg.jp/get/hsa05200/kgml"
+download.file(kegg_url, "hsa05200.xml")
+
+# Parse and convert to graph
+kegg_graph <- parseKGML("hsa05200.xml")
+gR <- KEGGpathway2Graph(kegg_graph, genesOnly = TRUE)
+
+# Subset graph to only your genes
+g_igraph <- igraph.from.graphNEL(gR)
+nodes_of_interest <- V(g_igraph)$name[V(g_igraph)$name %in% entrez_ids]
+sub_g <- induced_subgraph(g_igraph, vids = nodes_of_interest)
+
+# Plot reduced network
+plot(sub_g,
+     vertex.label = V(sub_g)$name,
+     main = "Top Genes in Pathway hsa05200",
+     vertex.color = "lightblue", edge.arrow.size = 0.5)
 
 
 

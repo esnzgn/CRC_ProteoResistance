@@ -11,10 +11,12 @@
 # Required Bioconductor packages
 # BiocManager::install(c("KEGGREST"))
 # install.packages(c("igraph", "ggraph", "tidygraph"))
+library(igraph)
+library(KEGGgraph)
+library(XML)
 library("KEGGREST")
 library("ggraph")
 library("tidygraph")
-library("igraph")
 library(pathview)
 library(QFeatures)
 library(SummarizedExperiment)
