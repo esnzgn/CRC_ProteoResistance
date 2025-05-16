@@ -557,6 +557,116 @@ plot(sub_g,
      main = "Top Genes in Pathway hsa05200",
      vertex.color = "lightblue", edge.arrow.size = 0.5)
 
+# Load and parse pathway
+kgml_file <- "hsa05200.xml"
+pathway <- parseKGML(kgml_file)
+graph <- KEGGpathway2Graph(pathway, genesOnly = TRUE)
+
+# Check node names
+graph::nodes(graph)[1:10]
+
+# Strip the "hsa:" prefix from the beginning of the string
+gene_string <- sub("^hsa:", "", genes_kegg[1])
+
+# Now safely evaluate the string into an actual character vector
+real_genes <- eval(parse(text = gene_string))
+
+# Prefix the gene symbols with "hsa:" to match node names in the graph
+genes_kegg_cleaned <- paste0("hsa:", real_genes)
+
+# Convert gene symbols to ENTREZ IDs
+entrez_ids <- mapIds(
+  org.Hs.eg.db,
+  keys = real_genes,
+  column = "ENTREZID",
+  keytype = "SYMBOL",
+  multiVals = "first"
+)
+
+# Drop NAs (genes that couldn't be mapped)
+entrez_ids <- na.omit(entrez_ids)
+
+# Add "hsa:" prefix to match graph format
+genes_kegg_matched <- paste0("hsa:", entrez_ids)
+
+# Now find matching nodes
+nodes_of_interest <- V(g_igraph)$name[V(g_igraph)$name %in% genes_kegg_matched]
+
+# Check how many matched
+length(nodes_of_interest)
+
+real_genes[is.na(entrez_ids)]
+
+subgraph_interest <- induced_subgraph(g_igraph, vids = nodes_of_interest)
+
+g_tbl <- as_tbl_graph(subgraph_interest)
+
+ggraph(g_tbl, layout = "kk") +
+  geom_edge_link(alpha = 0.3) +
+  geom_node_point(color = "steelblue", size = 3) +
+  geom_node_text(aes(label = name), repel = TRUE, size = 2.5) +
+  theme_void()
+
+V(g_igraph)$matched <- V(g_igraph)$name %in% nodes_of_interest
+
+plot(
+  g_igraph,
+  vertex.color = ifelse(V(g_igraph)$matched, "red", "gray"),
+  vertex.size = 3,
+  vertex.label = NA,
+  edge.arrow.size = 0.3
+)
+
+# 1. Extract vertex names (Entrez-style KEGG IDs)
+entrez_kegg_ids <- V(g_igraph)$name
+
+# 2. Remove "hsa:" prefix
+entrez_ids_clean <- gsub("hsa:", "", entrez_kegg_ids)
+
+# 3. Map back to gene symbols using org.Hs.eg.db
+symbol_map <- mapIds(
+  org.Hs.eg.db,
+  keys = entrez_ids_clean,
+  column = "SYMBOL",
+  keytype = "ENTREZID",
+  multiVals = "first"
+)
+
+# 4. Replace NA with original IDs (fallback)
+symbol_labels <- ifelse(is.na(symbol_map), entrez_kegg_ids, symbol_map)
+
+# 5. Assign as vertex labels
+V(g_igraph)$label <- symbol_labels
+
+plot(g_igraph,
+     vertex.size = 5,
+     vertex.label.cex = 0.7,
+     vertex.label.color = "black",
+     vertex.label.family = "sans")
+
+# Create a label vector: only assign gene symbols to nodes of interest
+V(g_igraph)$label <- ifelse(
+  V(g_igraph)$name %in% nodes_of_interest,
+  symbol_map[gsub("hsa:", "", V(g_igraph)$name)],
+  NA  # Leave other labels blank
+)
+
+# Optional: tweak the appearance for better clarity
+plot(g_igraph,
+     vertex.size = 5,
+     vertex.label.cex = 0.7,
+     vertex.label.color = "black",
+     vertex.label.family = "sans",
+     vertex.label.dist = 0.5,
+     vertex.color = ifelse(V(g_igraph)$name %in% nodes_of_interest, "orange", "gray"),
+     edge.color = "gray")
+
+V(g_igraph)$size <- ifelse(V(g_igraph)$name %in% nodes_of_interest, 8, 3)
+V(g_igraph)$frame.color <- ifelse(V(g_igraph)$name %in% nodes_of_interest, "black", NA)
+
+layout <- layout_with_fr(g_igraph)
+plot(g_igraph, layout = layout, ...)
+
 
 
 
