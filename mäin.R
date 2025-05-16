@@ -517,6 +517,26 @@ pathview(
 head(ekegg@result[, c("ID", "Description")], 10)
 
 
+# endhance pathview outp
+# Your gene data
+gene_list <- setNames(top_hits$logFC, top_hits$accession)
+
+# Convert to Entrez IDs
+entrez <- bitr(names(gene_list), fromType="UNIPROT", toType="ENTREZID", OrgDb=org.Hs.eg.db)
+gene_entrez <- setNames(gene_list[entrez$UNIPROT], entrez$ENTREZID)
+
+# Run pathview only with mapped genes (suppress others)
+pathview(gene.data = gene_entrez,
+         pathway.id = "hsa05200",
+         species = "hsa",
+         limit = list(gene=max(abs(gene_entrez))),
+         gene.idtype = "entrez",
+         kegg.native = TRUE,
+         out.suffix = "MTX_resistance",
+         low = list(gene="green"),
+         mid = list(gene="gray"),
+         high = list(gene="red"),
+         node.sum = "max")
 
 
 
