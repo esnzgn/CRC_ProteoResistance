@@ -11,6 +11,8 @@
 # Required Bioconductor packages
 # BiocManager::install(c("KEGGREST"))
 # install.packages(c("igraph", "ggraph", "tidygraph"))
+library(org.Hs.eg.db)
+library(AnnotationDbi)
 library(igraph)
 library(KEGGgraph)
 library(XML)
