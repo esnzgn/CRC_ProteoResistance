@@ -459,7 +459,7 @@ write.table(sig_genes, "sig_genes_mtx_vs_parental.txt", quote = FALSE, row.names
 
 #enrichment ####
 # Your significant gene symbols (top hits)
-gene_symbols <- c("SCG2", "APOC3", "DHFR", "FDFT1", "MB", "MIS18B", "APOBEC3G", "DCLK1", "ANLN", "MSMO1")
+gene_symbols <- top_hits$gene_name
 
 # Convert gene symbols to Entrez IDs
 entrez_ids <- bitr(gene_symbols, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
@@ -488,8 +488,35 @@ dotplot(ekegg, showCategory = 10, title = "KEGG Pathway Enrichment") + theme_min
 head(as.data.frame(ego_bp))
 head(as.data.frame(ekegg))
 
+# Assuming you have this mapping already from top_hits:
+# top_hits$gene_name and top_hits$logFC
 
-# r marddown ####
+# Convert gene names to Entrez IDs
+gene_symbols <- top_hits$gene_name
+logfc_vector <- top_hits$logFC
+names(logfc_vector) <- gene_symbols
+
+# Map SYMBOL to ENTREZID
+entrez_map <- bitr(names(logfc_vector), fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
+entrez_logfc <- merge(entrez_map, data.frame(SYMBOL = names(logfc_vector), logFC = logfc_vector), by = "SYMBOL")
+
+# Make a named vector for pathview
+gene_data <- entrez_logfc$logFC
+names(gene_data) <- entrez_logfc$ENTREZID
+
+# Example: pathway in cancer (hsa05200)
+pathview(
+  gene.data  = gene_data,
+  pathway.id = "hsa05200",  # Use any valid KEGG pathway ID (see below for tips)
+  species    = "hsa",
+  gene.idtype = "entrez",
+  limit      = list(gene = max(abs(gene_data))),  # auto scale
+  out.suffix = "MTX_resistance"
+)
+
+head(ekegg@result[, c("ID", "Description")], 10)
+
+
 
 
 
