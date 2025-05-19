@@ -689,4 +689,13 @@ ggraph(g_tbl, layout = "fr") +  # or layout = "kk"
 
 
 
+# Confirm assay was added values of those not expressingshalonf
+assays(se_hct116)
 
+se_hct116 <- aggregateFeatures(
+  se_hct116,
+  i = "norm",
+  fcol = "protein_id", # or another suitable feature column
+  name = "protein",
+  na.rm = TRUE
+)
