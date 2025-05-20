@@ -667,26 +667,6 @@ V(g_igraph)$frame.color <- ifelse(V(g_igraph)$name %in% nodes_of_interest, "blac
 layout <- layout_with_fr(g_igraph)
 plot(g_igraph, layout = layout, ...)
 
-# Convert to tidygraph object for ggraph plotting
-g_tbl <- as_tbl_graph(g_igraph)
-
-# Create a data frame to map labels
-g_tbl <- g_tbl %>%
-  mutate(label = ifelse(name %in% nodes_of_interest,
-                        symbol_map[gsub("hsa:", "", name)],
-                        NA),
-         is_interest = name %in% nodes_of_interest)
-
-# Plot with ggraph for repelled labels and clean styling
-ggraph(g_tbl, layout = "fr") +  # or layout = "kk"
-  geom_edge_link(color = "gray80", alpha = 0.6) +
-  geom_node_point(aes(color = is_interest), size = 3) +
-  geom_node_text(aes(label = label), repel = TRUE,
-                 size = 3, color = "black", fontface = "bold") +
-  scale_color_manual(values = c("FALSE" = "gray70", "TRUE" = "orange")) +
-  theme_void() +
-  theme(legend.position = "none")
-
 
 
 # Confirm assay was added values of those not expressingshalonf
