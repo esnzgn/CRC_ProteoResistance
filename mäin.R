@@ -139,6 +139,10 @@ str(qf, max.level = 1)
 # checks the excell file again
 names(all_sheets)
 
+# Check if columns like these exist
+colnames(all_sheets[["All_data"]]) %>% str_subset("psm_count")
+colnames(all_sheets[["All_data"]]) %>% str_subset("peptide_count")
+
 
 # EDA ####
 expr_long <- melt(expr_matrix_imputed)
