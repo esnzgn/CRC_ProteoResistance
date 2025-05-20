@@ -123,6 +123,21 @@ autoplot(prcomp_res, data = as.data.frame(colData(qf[["proteins"]])), colour = "
   theme_minimal() +
   labs(title = "PCA of Samples", x = "PC1", y = "PC2")
 
+# qf checks
+# Check number of assays (quantification levels)
+length(qf)
+
+# Check names of each assay
+names(qf)
+
+# Check the class of each assay
+sapply(qf, class)
+
+# Or see structure
+str(qf, max.level = 1)
+
+
+
 # EDA ####
 expr_long <- melt(expr_matrix_imputed)
 colnames(expr_long) <- c("Protein", "Sample", "Log2Intensity")
