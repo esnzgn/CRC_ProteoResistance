@@ -144,7 +144,38 @@ names(all_sheets)
 colnames(all_sheets[["All_data"]]) %>% str_subset("psm_count")
 colnames(all_sheets[["All_data"]]) %>% str_subset("peptide_count")
 
+# ProteoImporter ####
+# Function to inspect all sheet column names
+inspect_excel_colnames <- function(file_path) {
+  sheets <- excel_sheets(file_path)
+  cat("📘 File contains sheets:", paste(sheets, collapse = ", "), "\n\n")
+  
+  for (sheet in sheets) {
+    cat("🔹 Sheet:", sheet, "\n")
+    df <- read_excel(file_path, sheet = sheet, n_max = 5)  # just peek at top rows
+    print(colnames(df))
+    cat("\n")
+  }
+}
 
+# Example usage
+inspect_excel_colnames("../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx")
+
+# use my recently dev package called "ProteoImporter"
+########################
+detach("package:ProteoImporter")
+devtools::install("../ProteoImporter")
+library(ProteoImporter)
+
+sheet_map <- ProteoImporter::detect_quantification_levels("../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx")
+col_map <- ProteoImporter::extract_quant_dataframes("../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx", levels = "peptide")
+ProteoImporter::eda_proteomics_levels(col_map)
+qp_op <- ProteoImporter::import_proteomics(col_map)
+  
+qf_ip <- import_proteomics("../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx")
+length(qf_ip)      # number of assays
+names(qf_ip)       # names like "psm", "peptide", "protein"
+qf_ip[["protein"]] # access specific assay
 
 # EDA ####
 expr_long <- melt(expr_matrix_imputed)
