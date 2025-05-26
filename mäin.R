@@ -163,19 +163,26 @@ inspect_excel_colnames("../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43
 
 # use my recently dev package called "ProteoImporter"
 ########################
-detach("package:ProteoImporter")
-devtools::install("../ProteoImporter")
-library(ProteoImporter)
-
-sheet_map <- ProteoImporter::detect_quantification_levels("../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx")
-col_map <- ProteoImporter::extract_quant_dataframes("../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx", levels = "peptide")
-ProteoImporter::eda_proteomics_levels(col_map)
-qp_op <- ProteoImporter::import_proteomics(col_map)
-  
-qf_ip <- import_proteomics("../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx")
-length(qf_ip)      # number of assays
-names(qf_ip)       # names like "psm", "peptide", "protein"
-qf_ip[["protein"]] # access specific assay
+# detach("package:ProteoImporter", unload = TRUE)
+# devtools::install("../ProteoImporter")
+# library(ProteoImporter)
+# 
+# 
+# sheet_map <- ProteoImporter::detect_quantification_levels("../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx")
+# col_map <- ProteoImporter::extract_quant_dataframes(file_path = "../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx",
+#                                                     detection_df = sheet_map)
+# for (i in seq_along(col_map)){
+#   print(paste0("------------------------>> ",names(col_map[i])))
+#   print(names(col_map[[i]]))
+# }
+# 
+# ProteoImporter::eda_proteomics_levels(col_map)
+# qp_op <- ProteoImporter::import_proteomics(col_map)
+#   
+# qf_ip <- import_proteomics("../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx")
+# length(qf_ip)      # number of assays
+# names(qf_ip)       # names like "psm", "peptide", "protein"
+# qf_ip[["protein"]] # access specific assay
 
 # EDA ####
 expr_long <- melt(expr_matrix_imputed)
