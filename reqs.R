@@ -35,12 +35,12 @@ library(impute)
 library(ggfortify)
 library(reshape2)
 library(pheatmap)
-library(SummarizedExperiment)
 library(tidyr)
 library(httr)
 library(jsonlite)
 library(enrichplot)
 library(stringr)
+library(preprocessCore)
 
 
 

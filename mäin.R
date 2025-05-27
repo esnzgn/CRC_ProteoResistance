@@ -205,8 +205,6 @@ head(row_annot$protein_id)
 rownames(expr_matrix) <- row_annot$protein_id
 rownames(row_annot) <- row_annot$protein_id
 
-library(SummarizedExperiment)
-
 se <- SummarizedExperiment(
   assays = list(log2_Intensity = expr_matrix),
   rowData = row_annot,
