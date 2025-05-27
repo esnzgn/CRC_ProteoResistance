@@ -241,7 +241,18 @@ se_hct116 <- se[, grepl("^hct116", colData(se)$condition)]
 # Check sample conditions
 table(colData(se_hct116)$condition)
 
-se_hct116 <- normalizeD(se_hct116, i = "log2_Intensity", name = "norm")
+# Create QFeatures object from SummarizedExperiment
+qf <- QFeatures(list(proteins = se_hct116))
+
+# Quantile normalization
+qf <- normalize(qf, i = "proteins", name = "norm", method = "quantiles")
+
+# Check assays
+names(qf)  # Instead of assayNames(qf)
+
+# Access normalized assay
+norm_mat <- assay(qf[["norm"]])
+
 
 # Manually normalize by median-centering (column-wise)
 assay(se_hct116, "norm") <- sweep(
