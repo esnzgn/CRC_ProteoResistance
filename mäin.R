@@ -131,10 +131,10 @@ length(qf)
 names(qf)
 
 # Check the class of each assay
-sapply(qf, class)
+# sapply(qf, class)
 
 # Or see structure
-str(qf, max.level = 1)
+# str(qf, max.level = 1)
 
 
 # checks the excell file again
