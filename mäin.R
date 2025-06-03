@@ -141,25 +141,25 @@ str(qf, max.level = 1)
 names(all_sheets)
 
 # Check if columns like these exist
-colnames(all_sheets[["All_data"]]) %>% str_subset("psm_count")
-colnames(all_sheets[["All_data"]]) %>% str_subset("peptide_count")
+# colnames(all_sheets[["All_data"]]) %>% str_subset("psm_count")
+# colnames(all_sheets[["All_data"]]) %>% str_subset("peptide_count")
 
 # ProteoImporter ####
 # Function to inspect all sheet column names
-inspect_excel_colnames <- function(file_path) {
-  sheets <- excel_sheets(file_path)
-  cat("📘 File contains sheets:", paste(sheets, collapse = ", "), "\n\n")
-  
-  for (sheet in sheets) {
-    cat("🔹 Sheet:", sheet, "\n")
-    df <- read_excel(file_path, sheet = sheet, n_max = 5)  # just peek at top rows
-    print(colnames(df))
-    cat("\n")
-  }
-}
+# inspect_excel_colnames <- function(file_path) {
+#   sheets <- excel_sheets(file_path)
+#   cat("📘 File contains sheets:", paste(sheets, collapse = ", "), "\n\n")
+#   
+#   for (sheet in sheets) {
+#     cat("🔹 Sheet:", sheet, "\n")
+#     df <- read_excel(file_path, sheet = sheet, n_max = 5)  # just peek at top rows
+#     print(colnames(df))
+#     cat("\n")
+#   }
+# }
 
 # Example usage
-inspect_excel_colnames("../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx")
+# inspect_excel_colnames("../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx")
 
 # use my recently dev package called "ProteoImporter"
 ########################
