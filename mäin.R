@@ -187,15 +187,20 @@ names(all_sheets)
 # EDA ####
 expr_long <- melt(expr_matrix_imputed)
 colnames(expr_long) <- c("Protein", "Sample", "Log2Intensity")
+dir.create("./output/plots/", recursive = T)
 
+pdf(paste0("./output/plots/", "log2_intensity_proteins.pdf"), width = 7,height = 10)
 ggplot(expr_long, aes(x = Sample, y = Log2Intensity)) +
   geom_boxplot() +
   theme_minimal(base_size = 10) +
   coord_flip() +
   labs(title = "Log2 Intensities per Sample")
+dev.off()
 
+pdf(paste0("./output/plots/", "heatmap_sample_correlations.pdf"), width = 10,height = 10)
 sample_cor <- cor(expr_matrix_imputed, method = "pearson")
 pheatmap(sample_cor, main = "Sample Correlation Heatmap")
+dev.off()
 
 # dep ####
 # Make sure protein IDs exist in the annotation
