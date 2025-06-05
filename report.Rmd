@@ -2,7 +2,9 @@
 title: "CRC_proteomics"
 author: "Ehsan Zangene"
 date: "2025-06-05"
-output: html_document
+output:
+  html_document: default
+  pdf_document: default
 ---
 
 ```{r , include=FALSE}
@@ -19,6 +21,8 @@ library(pheatmap)
 library(DT)
 library(UpSetR)
 library(pheatmap)
+library(stringr)
+library(ggrepel)
 library(stringr)
 
 load("../CRC_ProteoResistance_data/CRC_ProteoResistance_workspace.RData")
@@ -71,18 +75,40 @@ knitr::kable(deg_summary, caption = "Number of DEGs per Comparison")
 
 ```{r, echo=FALSE}
 for (comp in names(deg_filtered)) {
-  df <- de_results[[comp]]
-  df$Significant <- with(df, ifelse(adj.P.Val < 0.0005 & abs(logFC) > 2 & AveExpr > 2, "Yes", "No"))
+  df <- de_results[[comp]] %>%
+    mutate(Significant = ifelse(adj.P.Val < 0.0005 & abs(logFC) > 2 & AveExpr > 2, "Yes", "No"))
   
-  p <- ggplot(df, aes(x = logFC, y = -log10(adj.P.Val), color = Significant)) +
-    geom_point(alpha = 0.6) +
+  # Extract and clean top 10 gene symbols
+  top10 <- df %>%
+    arrange(adj.P.Val) %>%
+    slice(1:10) %>%
+    mutate(Gene = str_extract(protein_id, "(?<=\\|)[^|]+(?=\\|[^|]+$)"),
+           Gene = str_remove(Gene, "_HUMAN$"))
+  
+  # Volcano plot
+  p <- ggplot(df, aes(x = logFC, y = -log10(adj.P.Val))) +
+    geom_point(aes(color = Significant), alpha = 0.6) +
+    
+    # Overlay points for top 10 with grey outline
+    geom_point(data = top10, shape = 21, fill = "white", color = "lightgrey", size = 2, stroke = 1) +
+    
+    # Gene labels in black
+    geom_text_repel(data = top10, aes(label = Gene),
+                    color = "black", size = 3, max.overlaps = Inf,
+                    min.segment.length = 0) +
+    
     geom_vline(xintercept = c(-2, 2), linetype = "dashed", color = "blue") +
     geom_hline(yintercept = -log10(0.0005), linetype = "dashed", color = "red") +
+    
     scale_color_manual(values = c("grey60", "firebrick")) +
-    labs(title = paste("Volcano Plot:", comp), x = "log2 Fold Change", y = "-log10 Adjusted P-value") +
+    labs(title = paste("Volcano Plot:", comp),
+         x = "log2 Fold Change",
+         y = "-log10 Adjusted P-value") +
     theme_minimal()
+  
   print(p)
 }
+
 ```
 
 ```{r, echo=FALSE}
@@ -93,22 +119,20 @@ library(dplyr)
 for (comp in names(deg_filtered)) {
   message("Generating heatmap for: ", comp)
   
-  # Extract parts from contrast name
   parts <- str_split(comp, "_")[[1]]
   cell_line <- parts[1]
   treatment <- paste(parts[2:(length(parts) - 2)], collapse = "_")
   
-  # Get top 30 DEGs
   top30_df <- deg_filtered[[comp]] %>%
     arrange(adj.P.Val) %>%
     slice(1:30)
   top30_ids <- top30_df$protein_id
   
-  # Clean gene symbols (e.g., sp|Q9XYZ|GENE_HUMAN → GENE)
+  # Clean gene symbols
   clean_symbols <- str_extract(top30_ids, "(?<=\\|)[^|]+(?=\\|[^|]+$)") %>%
     str_remove("_HUMAN$")
   
-  # Subset relevant samples
+  # Subset expression matrix
   cd <- colData(qf[["norm_proteins"]])
   sample_idx <- cd$cell_line == cell_line & cd$treatment %in% c("Parental", treatment)
   mat <- assay(qf[["norm_proteins"]])[top30_ids, sample_idx, drop = FALSE]
@@ -122,33 +146,40 @@ for (comp in names(deg_filtered)) {
   # Rename rows with gene symbols
   rownames(mat) <- clean_symbols[match(rownames(mat), top30_ids)]
   
-  # Clean column annotations
+  # Annotation (cell_line and treatment)
   ann <- as.data.frame(cd[sample_idx, c("cell_line", "treatment")])
-  # ann$cell_line <- gsub("HCT116", "HCT", ann$cell_line)
-  # ann$cell_line <- gsub("SW620", "SW", ann$cell_line)
   
   # Plot heatmap
   pheatmap(mat,
            scale = "row",
            annotation_col = ann,
            main = paste("Top 30 DEGs -", gsub("HCT116", "HCT", gsub("SW620", "SW", comp))),
-           fontsize_row = 7,
-           angle_col = 45)
+           fontsize = 11,              # general font size
+           fontsize_row = 6.5,         # smaller gene name font
+           show_colnames = FALSE,      # remove x-axis sample labels
+           angle_col = 45,
+           border_color = NA)
 }
-
 
 ```
 
-```{r, echo=FALSE}
+```{r dt_tables, echo=FALSE, eval=knitr::is_html_output()}
 for (comp in names(deg_filtered)) {
-  dat <- deg_filtered[[comp]] %>% arrange(adj.P.Val) %>% head(20)
+  dat <- deg_filtered[[comp]] %>%
+    arrange(adj.P.Val) %>%
+    head(20) %>%
+    mutate(protein_id = str_extract(protein_id, "(?<=\\|)[^|]+(?=\\|[^|]+$)"),
+           protein_id = str_remove(protein_id, "_HUMAN$"))
+
+  # Print as a widget (no need for %>% print())
   DT::datatable(
     dat,
-    caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', 
-                                      paste("Top 20 DEGs for", comp)),
+    caption = htmltools::tags$caption(
+      style = 'caption-side: top; text-align: left;',
+      paste("Top 20 DEGs for", comp)
+    ),
     options = list(pageLength = 10, scrollX = TRUE),
     rownames = FALSE
-  ) %>% print()
+  )
 }
-
 ```
