@@ -18,12 +18,12 @@ library(ggfortify)
 library(pheatmap)
 library(DT)
 library(UpSetR)
+library(pheatmap)
+library(stringr)
 
 load("../CRC_ProteoResistance_data/CRC_ProteoResistance_workspace.RData")
 prot <- getWithColData(qf, "norm_proteins")
 ```
-
-
 
 ```{r , echo=FALSE}
 cell_lines <- c("HCT116", "SW620")
@@ -83,4 +83,72 @@ for (comp in names(deg_filtered)) {
     theme_minimal()
   print(p)
 }
+```
+
+```{r, echo=FALSE}
+library(pheatmap)
+library(stringr)
+library(dplyr)
+
+for (comp in names(deg_filtered)) {
+  message("Generating heatmap for: ", comp)
+  
+  # Extract parts from contrast name
+  parts <- str_split(comp, "_")[[1]]
+  cell_line <- parts[1]
+  treatment <- paste(parts[2:(length(parts) - 2)], collapse = "_")
+  
+  # Get top 30 DEGs
+  top30_df <- deg_filtered[[comp]] %>%
+    arrange(adj.P.Val) %>%
+    slice(1:30)
+  top30_ids <- top30_df$protein_id
+  
+  # Clean gene symbols (e.g., sp|Q9XYZ|GENE_HUMAN → GENE)
+  clean_symbols <- str_extract(top30_ids, "(?<=\\|)[^|]+(?=\\|[^|]+$)") %>%
+    str_remove("_HUMAN$")
+  
+  # Subset relevant samples
+  cd <- colData(qf[["norm_proteins"]])
+  sample_idx <- cd$cell_line == cell_line & cd$treatment %in% c("Parental", treatment)
+  mat <- assay(qf[["norm_proteins"]])[top30_ids, sample_idx, drop = FALSE]
+  mat <- mat[apply(mat, 1, function(x) all(is.finite(x))), , drop = FALSE]
+  
+  if (nrow(mat) < 2 || ncol(mat) < 2) {
+    message("⚠️ Skipping: not enough clean data for ", comp)
+    next
+  }
+  
+  # Rename rows with gene symbols
+  rownames(mat) <- clean_symbols[match(rownames(mat), top30_ids)]
+  
+  # Clean column annotations
+  ann <- as.data.frame(cd[sample_idx, c("cell_line", "treatment")])
+  # ann$cell_line <- gsub("HCT116", "HCT", ann$cell_line)
+  # ann$cell_line <- gsub("SW620", "SW", ann$cell_line)
+  
+  # Plot heatmap
+  pheatmap(mat,
+           scale = "row",
+           annotation_col = ann,
+           main = paste("Top 30 DEGs -", gsub("HCT116", "HCT", gsub("SW620", "SW", comp))),
+           fontsize_row = 7,
+           angle_col = 45)
+}
+
+
+```
+
+```{r, echo=FALSE}
+for (comp in names(deg_filtered)) {
+  dat <- deg_filtered[[comp]] %>% arrange(adj.P.Val) %>% head(20)
+  DT::datatable(
+    dat,
+    caption = htmltools::tags$caption(style = 'caption-side: top; text-align: left;', 
+                                      paste("Top 20 DEGs for", comp)),
+    options = list(pageLength = 10, scrollX = TRUE),
+    rownames = FALSE
+  ) %>% print()
+}
+
 ```
