@@ -1,0 +1,86 @@
+---
+title: "CRC_proteomics"
+author: "Ehsan Zangene"
+date: "2025-06-05"
+output: html_document
+---
+
+```{r , include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+library(QFeatures)
+library(SummarizedExperiment)
+library(tidyverse)
+library(msqrob2)
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(EnhancedVolcano)
+library(ggfortify)
+library(pheatmap)
+library(DT)
+library(UpSetR)
+
+load("../CRC_ProteoResistance_data/CRC_ProteoResistance_workspace.RData")
+prot <- getWithColData(qf, "norm_proteins")
+```
+
+
+
+```{r , echo=FALSE}
+cell_lines <- c("HCT116", "SW620")
+de_results <- list()
+deg_filtered <- list()
+
+for (cl in cell_lines) {
+  idx <- colData(prot)$cell_line == cl
+  se_sub <- prot[, idx]
+  se_sub$group <- droplevels(factor(se_sub$group))
+  
+  treatments <- unique(se_sub$treatment)
+  treatments <- treatments[treatments != "Parental"]
+  
+  for (tr in treatments) {
+    comp_name <- paste0(cl, "_", tr, "_vs_Parental")
+    selected <- se_sub[, se_sub$treatment %in% c("Parental", tr)]
+    selected$treatment <- droplevels(factor(selected$treatment))
+    
+    design <- model.matrix(~ 0 + selected$treatment)
+    colnames(design) <- levels(selected$treatment)
+    fit <- limma::lmFit(assay(selected), design)
+    contrast_str <- paste0(tr, " - Parental")
+    contrast_matrix <- limma::makeContrasts(contrasts = contrast_str, levels = design)
+    fit2 <- limma::contrasts.fit(fit, contrast_matrix)
+    fit2 <- limma::eBayes(fit2)
+    
+    top_res <- limma::topTable(fit2, coef = 1, number = Inf) %>%
+      rownames_to_column("protein_id") %>%
+      mutate(comparison = comp_name)
+    
+    degs <- top_res %>%
+      filter(adj.P.Val < 0.0005, abs(logFC) > 2, AveExpr > 2)
+    
+    de_results[[comp_name]] <- top_res
+    deg_filtered[[comp_name]] <- degs
+  }
+}
+
+deg_counts <- sapply(deg_filtered, nrow)
+deg_summary <- data.frame(Comparison = names(deg_counts), DEG_Count = deg_counts)
+knitr::kable(deg_summary, caption = "Number of DEGs per Comparison")
+
+```
+
+```{r, echo=FALSE}
+for (comp in names(deg_filtered)) {
+  df <- de_results[[comp]]
+  df$Significant <- with(df, ifelse(adj.P.Val < 0.0005 & abs(logFC) > 2 & AveExpr > 2, "Yes", "No"))
+  
+  p <- ggplot(df, aes(x = logFC, y = -log10(adj.P.Val), color = Significant)) +
+    geom_point(alpha = 0.6) +
+    geom_vline(xintercept = c(-2, 2), linetype = "dashed", color = "blue") +
+    geom_hline(yintercept = -log10(0.0005), linetype = "dashed", color = "red") +
+    scale_color_manual(values = c("grey60", "firebrick")) +
+    labs(title = paste("Volcano Plot:", comp), x = "log2 Fold Change", y = "-log10 Adjusted P-value") +
+    theme_minimal()
+  print(p)
+}
+```
