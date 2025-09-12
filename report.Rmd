@@ -202,7 +202,7 @@ for (cl in cell_lines) {
       mutate(comparison = comp_name)
     
     degs <- top_res %>%
-      filter(adj.P.Val < 0.0005, abs(logFC) > 2, AveExpr > 2)
+      filter(adj.P.Val < 0.00001, abs(logFC) > 4, AveExpr > 4)
     
     de_results[[comp_name]] <- top_res
     deg_filtered[[comp_name]] <- degs
