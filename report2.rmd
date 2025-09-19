@@ -187,7 +187,7 @@ for (comp in names(deg_filtered)) {
 
 ## 6. Functional Enrichment (KEGG)
 
-```{r enrichment}
+```{r KEGG enrichment}
 library(clusterProfiler)
 library(org.Hs.eg.db)
 
@@ -245,7 +245,7 @@ for (comp in names(deg_filtered)) {
 ```
 
 
-```{r enrichment}
+```{r GO CP enrichment}
 
 library(clusterProfiler)
 library(org.Hs.eg.db)
