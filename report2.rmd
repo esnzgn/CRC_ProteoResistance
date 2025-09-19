@@ -25,6 +25,8 @@ library(clusterProfiler)
 library(org.Hs.eg.db)
 library(DT)
 library(reshape2)
+library(factoextra)
+library(patchwork) 
 ```
 
 ## 1. Load and prepare data
@@ -138,8 +140,8 @@ for (cl in cell_lines) {
 for (comp in names(deg_filtered)) {
   df <- de_results[[comp]] %>%
     mutate(Regulation = case_when(
-      adj.P.Val < 0.0005 & logFC > 2 ~ "Up",
-      adj.P.Val < 0.0005 & logFC < -2 ~ "Down",
+      adj.P.Val < 0.005 & logFC > 2 ~ "Up",
+      adj.P.Val < 0.005 & logFC < -2 ~ "Down",
       TRUE ~ "NotSig"
     ))
 
@@ -243,4 +245,122 @@ for (comp in names(deg_filtered)) {
 ```
 
 
+```{r enrichment}
 
+library(clusterProfiler)
+library(org.Hs.eg.db)
+library(enrichplot)
+
+go_results <- list()
+
+for (comp in names(deg_filtered)) {
+  genes <- deg_filtered[[comp]]$gene_symbol
+
+  entrez_ids <- tryCatch({
+    bitr(genes,
+         fromType = "SYMBOL",
+         toType = "ENTREZID",
+         OrgDb = org.Hs.eg.db)
+  }, error = function(e) {
+    message("❌ Failed to convert symbols for ", comp, ": ", e$message)
+    return(NULL)
+  })
+
+  if (!is.null(entrez_ids) && nrow(entrez_ids) > 5) {
+
+    # Biological Process (BP)
+    go_bp <- tryCatch({
+      enrichGO(gene = entrez_ids$ENTREZID,
+               OrgDb = org.Hs.eg.db,
+               keyType = "ENTREZID",
+               ont = "BP",
+               pAdjustMethod = "BH",
+               pvalueCutoff = 0.05,
+               readable = TRUE)
+    }, error = function(e) NULL)
+
+    # Molecular Function (MF)
+    go_mf <- tryCatch({
+      enrichGO(gene = entrez_ids$ENTREZID,
+               OrgDb = org.Hs.eg.db,
+               keyType = "ENTREZID",
+               ont = "MF",
+               pAdjustMethod = "BH",
+               pvalueCutoff = 0.05,
+               readable = TRUE)
+    }, error = function(e) NULL)
+
+    # Cellular Component (CC)
+    go_cc <- tryCatch({
+      enrichGO(gene = entrez_ids$ENTREZID,
+               OrgDb = org.Hs.eg.db,
+               keyType = "ENTREZID",
+               ont = "CC",
+               pAdjustMethod = "BH",
+               pvalueCutoff = 0.05,
+               readable = TRUE)
+    }, error = function(e) NULL)
+
+    # Store in list
+    go_results[[comp]] <- list(
+      BP = go_bp,
+      MF = go_mf,
+      CC = go_cc
+    )
+
+    # Plot if not empty
+    if (!is.null(go_bp) && nrow(go_bp) > 0) {
+      print(barplot(go_bp, showCategory = 10,
+                    title = paste("GO: Biological Process -", comp)))
+    } else {
+      message("⚠️ No GO:BP terms enriched for ", comp)
+    }
+
+    if (!is.null(go_mf) && nrow(go_mf) > 0) {
+      print(barplot(go_mf, showCategory = 10,
+                    title = paste("GO: Molecular Function -", comp)))
+    } else {
+      message("⚠️ No GO:MF terms enriched for ", comp)
+    }
+
+    if (!is.null(go_cc) && nrow(go_cc) > 0) {
+      print(barplot(go_cc, showCategory = 10,
+                    title = paste("GO: Cellular Component -", comp)))
+    } else {
+      message("⚠️ No GO:CC terms enriched for ", comp)
+    }
+
+  } else {
+    message("⚠️ Not enough mappable genes for ", comp)
+  }
+}
+
+
+
+# Create multi-panel GO enrichment plots (barplots) for each comparison
+for (comp in names(go_results)) {
+  plots <- list()
+
+  for (ont in c("BP", "MF", "CC")) {
+    res <- go_results[[comp]][[ont]]
+
+    if (!is.null(res) && nrow(res) > 0) {
+      p <- barplot(res, showCategory = 10) +
+        ggtitle(paste(ont, "-", comp)) +
+        theme_minimal(base_size = 12)
+      plots[[ont]] <- p
+    }
+  }
+
+  # Combine all available plots (BP, MF, CC) for the current comparison
+  if (length(plots) > 0) {
+    combined_plot <- wrap_plots(plots, ncol = 1)
+    print(combined_plot)
+  } else {
+    cat("### ⚠️ No GO terms enriched for", comp, "\n\n")
+  }
+}
+
+
+
+```
