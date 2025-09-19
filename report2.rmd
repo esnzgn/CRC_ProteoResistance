@@ -1,63 +1,56 @@
 ---
-title: "CRC_proteomics using Gene Symbols"
+title: "CRC_proteomics_analysis"
 author: "EZ"
-date: "2025-06-05"
+date: "2025-09-19"
 output:
   html_document:
     toc: true
     toc_depth: 2
     number_sections: true
-    df_print: paged
-  pdf_document: default
+  pdf_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
-
-# Load packages
 library(tidyverse)
-library(readxl)
 library(SummarizedExperiment)
-library(QFeatures)
 library(limma)
-library(clusterProfiler)
-library(org.Hs.eg.db)
-library(ggfortify)
 library(ggrepel)
 library(pheatmap)
+library(readxl)
+library(clusterProfiler)
+library(org.Hs.eg.db)
 library(DT)
-library(patchwork)
-library(stringr)
+library(reshape2)
 ```
 
-### Load and Preprocess Data
+## 1. Load and prepare data
+
 ```{r load-data}
+# Load data
 excel_path <- "../CRC_ProteoResistance_data/CPMSF_GPPF-PM-43_CPPF-PM-43_results_20240119.xlsx"
 quan_df <- read_excel(excel_path, sheet = "Quan_data")
 
-# Rename first columns
-colnames(quan_df)[1:3] <- c("protein_id", "gene_name", "description")
-
-# Fix TH9616 → TH9619
+# Standardize first 3 columns
+colnames(quan_df)[1:3] <- c("protein_id", "gene_symbol", "description")
 colnames(quan_df) <- str_replace_all(colnames(quan_df), "TH9616", "TH9619")
 
-# Extract gene symbol from protein_id
-quan_df <- quan_df %>%
-  mutate(gene_symbol = str_extract(protein_id, "(?<=\\|)[^|]+(?=\\|[^|]+$)"),
-         gene_symbol = str_remove(gene_symbol, "_HUMAN$"))
-
 # Clean intensities
-for (i in 4:(ncol(quan_df)-1)) {
+for (i in 4:ncol(quan_df)) {
   quan_df[[i]] <- suppressWarnings(as.numeric(quan_df[[i]]))
   quan_df[[i]][is.na(quan_df[[i]]) | quan_df[[i]] <= 0] <- 1e-3
 }
-```
 
-### Create SummarizedExperiment Object with Gene Symbols
-```{r create-se}
-assay_data <- as.matrix(quan_df[, 4:(ncol(quan_df)-1)])
+# Matrix & metadata
+assay_data <- as.matrix(quan_df[, 4:ncol(quan_df)])
 rownames(assay_data) <- make.unique(quan_df$gene_symbol)
+row_metadata <- quan_df[, 1:3]
+rownames(row_metadata) <- rownames(assay_data)
 
+# Sample metadata
 sample_names <- colnames(assay_data)
 cell_line <- case_when(
   str_detect(sample_names, "HCT116") ~ "HCT116",
@@ -80,156 +73,174 @@ col_metadata <- DataFrame(
   row.names = sample_names
 )
 
+# SE object
 se <- SummarizedExperiment(
-  assays = list(intensity = assay_data),
-  rowData = quan_df[, c("protein_id", "gene_name", "description", "gene_symbol")],
+  assays = list(norm = assay_data),
+  rowData = row_metadata,
   colData = col_metadata
 )
 ```
 
-### Normalize and Filter
-```{r normalize}
-norm_mat <- sweep(assay(se), 2, apply(assay(se), 2, median, na.rm = TRUE))
-norm_mat <- sweep(norm_mat, 1, apply(norm_mat, 1, median, na.rm = TRUE))
+## 2. PCA plot
 
-# Remove >50% NA
-keep <- rowMeans(is.na(norm_mat)) <= 0.5
-norm_mat <- norm_mat[keep, ]
-se <- se[keep, ]
-assay(se) <- norm_mat
-```
-
-### PCA
 ```{r pca}
-norm_mat_pca <- norm_mat[apply(norm_mat, 1, function(x) sd(x, na.rm = TRUE) > 0), ]
+mat <- assay(se)
+mat <- mat[apply(mat, 1, function(x) sd(x, na.rm = TRUE) > 0), ]
+pca <- prcomp(t(mat), scale. = TRUE)
 cd <- as.data.frame(colData(se))
 
-pca <- prcomp(t(norm_mat_pca), scale. = TRUE)
-
-autoplot(pca, data = cd, colour = 'group') +
-  theme_minimal() + ggtitle("PCA of Normalized Proteins")
+fviz_pca_ind(pca,
+             geom.ind = "point",
+             col.ind = cd$group,
+             palette = "jco",
+             title = "PCA of Normalized Proteins")
 ```
 
-### Boxplot
-```{r boxplot}
-melted_norm <- reshape2::melt(norm_mat)
+## 3. Volcano plots & DEGs
 
-ggplot(melted_norm, aes(x = Var2, y = value)) +
-  geom_boxplot(outlier.size = 0.2) +
-  theme(axis.text.x = element_blank()) +
-  labs(title = "Boxplot: Normalized Intensities", x = "", y = "Intensity")
-```
-
-### DEG Analysis with Limma
 ```{r deg-analysis}
-cell_lines <- unique(cd$cell_line)
+cell_lines <- unique(colData(se)$cell_line)
 de_results <- list()
 deg_filtered <- list()
 
 for (cl in cell_lines) {
-  idx <- cd$cell_line == cl
-  se_sub <- se[, idx]
-  se_sub$group <- droplevels(factor(se_sub$group))
-  treatments <- unique(se_sub$treatment)
+  se_cl <- se[, colData(se)$cell_line == cl]
+  treatments <- unique(se_cl$treatment)
   treatments <- treatments[treatments != "Parental"]
-  
+
   for (tr in treatments) {
     comp_name <- paste0(cl, "_", tr, "_vs_Parental")
-    selected <- se_sub[, se_sub$treatment %in% c("Parental", tr)]
-    
-    # ❗ Skip if either group is missing
-    if (length(unique(selected$treatment)) < 2) {
-      warning("Skipping comparison ", comp_name, " due to missing group.")
-      next
-    }
-    
+    selected <- se_cl[, se_cl$treatment %in% c("Parental", tr)]
     selected$treatment <- droplevels(factor(selected$treatment))
-    
+
     design <- model.matrix(~ 0 + selected$treatment)
     colnames(design) <- levels(selected$treatment)
-    
-    fit <- limma::lmFit(assay(selected), design)
-    contrast_matrix <- limma::makeContrasts(paste0(tr, " - Parental"), levels = design)
-    fit2 <- limma::contrasts.fit(fit, contrast_matrix)
-    fit2 <- limma::eBayes(fit2)
-    
-    top_res <- limma::topTable(fit2, coef = 1, number = Inf) %>%
+    fit <- lmFit(assay(selected), design)
+    contrast_matrix <- makeContrasts(paste0(tr, " - Parental"), levels = design)
+    fit2 <- contrasts.fit(fit, contrast_matrix)
+    fit2 <- eBayes(fit2)
+
+    top_res <- topTable(fit2, coef = 1, number = Inf) %>%
       rownames_to_column("gene_symbol") %>%
       mutate(comparison = comp_name)
-    
-    degs <- top_res %>%
-      filter(adj.P.Val < 0.05, abs(logFC) > 1)
-    
+
+    degs <- top_res %>% filter(adj.P.Val < 0.05, abs(logFC) > 1)
+
     de_results[[comp_name]] <- top_res
     deg_filtered[[comp_name]] <- degs
   }
 }
-
 ```
 
-### Volcano Plot
-```{r volcano, echo=FALSE, fig.width=8, fig.height=6}
+## 4. Volcano plots
+
+```{r volcano-plots, fig.width=8, fig.height=6}
 for (comp in names(deg_filtered)) {
   df <- de_results[[comp]] %>%
-    mutate(
-      Regulation = case_when(
-        adj.P.Val < 0.0005 & logFC > 2  ~ "Up",
-        adj.P.Val < 0.0005 & logFC < -2 ~ "Down",
-        TRUE ~ "NotSig"
-      )
-    ) %>%
-    # Ensure no infinite or NA values
-    filter(is.finite(logFC), is.finite(adj.P.Val))
+    mutate(Regulation = case_when(
+      adj.P.Val < 0.0005 & logFC > 2 ~ "Up",
+      adj.P.Val < 0.0005 & logFC < -2 ~ "Down",
+      TRUE ~ "NotSig"
+    ))
 
-  # Now select top 20 significant genes
-  top20 <- df %>% arrange(adj.P.Val) %>% slice(1:20)
+top10 <- df %>%
+  filter(adj.P.Val < 0.05, abs(logFC) > 2) %>%
+  arrange(adj.P.Val) %>%
+  slice(1:10)
+
+
 
   p <- ggplot(df, aes(x = logFC, y = -log10(adj.P.Val))) +
     geom_point(aes(color = Regulation), alpha = 0.6) +
-
-    # Circle top 20 genes
-    geom_point(data = top20, shape = 21, fill = "white", color = "black", size = 2.5, stroke = 0.8) +
-
-    # Add gene labels
-    geom_text_repel(data = top20, aes(label = gene_symbol), color = "black", size = 3) +
-
-    # Threshold lines
+    geom_point(data = top10, shape = 21, fill = NA, color = "black", size = 2.5, stroke = 0.8) +
+    geom_text_repel(data = top10, aes(label = gene_symbol), color = "black", size = 3) +
     geom_vline(xintercept = c(-2, 2), linetype = "dashed", color = "blue") +
     geom_hline(yintercept = -log10(0.0005), linetype = "dashed", color = "red") +
-
-    # Color scale: Up/Down/NS
     scale_color_manual(values = c("Up" = "firebrick", "Down" = "royalblue", "NotSig" = "grey70")) +
-
     theme_minimal(base_size = 12) +
-    labs(
-      title = paste("Volcano Plot –", comp),
-      x = "log2 Fold Change",
-      y = "-log10 Adjusted P-Value",
-      color = "Regulation"
-    )
+    labs(title = paste("Volcano Plot –", comp),
+         x = "log2 Fold Change",
+         y = "-log10 Adjusted P-Value")
 
   print(p)
 }
+```
+
+## 5. DEG table
+
+```{r top-deg-table}
+for (comp in names(deg_filtered)) {
+  dat <- deg_filtered[[comp]] %>%
+    arrange(adj.P.Val) %>%
+    dplyr::select(gene_symbol, logFC, adj.P.Val, AveExpr)
+
+  DT::datatable(dat, 
+                caption = htmltools::tags$caption(
+                  style = 'caption-side: top; text-align: left;',
+                  paste("Top DEGs for", comp)),
+                options = list(pageLength = 10, scrollX = TRUE))
+}
+
+```
+
+## 6. Functional Enrichment (KEGG)
+
+```{r enrichment}
+library(clusterProfiler)
+library(org.Hs.eg.db)
+
+enrich_results <- list()
+
+for (comp in names(deg_filtered)) {
+  genes <- deg_filtered[[comp]]$gene_symbol
+
+  # Map gene symbols to ENTREZ IDs
+  entrez_ids <- tryCatch({
+    bitr(genes,
+         fromType = "SYMBOL",
+         toType = "ENTREZID",
+         OrgDb = org.Hs.eg.db)
+  }, error = function(e) {
+    message("❌ Failed to convert symbols for ", comp, ": ", e$message)
+    return(NULL)
+  })
+
+  if (!is.null(entrez_ids) && nrow(entrez_ids) > 5) {
+    # Run KEGG enrichment
+    kegg_res <- tryCatch({
+      enrichKEGG(gene = entrez_ids$ENTREZID, organism = "hsa")
+    }, error = function(e) {
+      message("❌ KEGG enrichment failed for ", comp, ": ", e$message)
+      return(NULL)
+    })
+
+    # Check if valid and non-empty
+    if (!is.null(kegg_res) &&
+        inherits(kegg_res, "enrichResult") &&
+        nrow(kegg_res@result) > 0 &&
+        "Description" %in% colnames(kegg_res@result) &&
+        any(!is.na(kegg_res@result$Description))) {
+
+      enrich_results[[comp]] <- kegg_res
+
+      tryCatch({
+        print(barplot(kegg_res,
+                      showCategory = 10,
+                      title = paste("KEGG Pathways -", comp)))
+      }, error = function(e) {
+        message("⚠️ Plotting failed for ", comp, ": ", e$message)
+      })
+
+    } else {
+      message("⚠️ No enriched KEGG terms found for ", comp)
+    }
+  } else {
+    message("⚠️ Not enough valid genes mapped for ", comp)
+  }
+}
 
 
 ```
 
-### Enrichment Analysis
-```{r enrichment, fig.height=5}
-for (comp in names(deg_filtered)) {
-  gene_vec <- deg_filtered[[comp]]$gene_symbol
-  entrez_ids <- bitr(gene_vec, fromType = "SYMBOL", toType = "ENTREZID", OrgDb = org.Hs.eg.db)
-  enrich_kegg <- enrichKEGG(gene = entrez_ids$ENTREZID, organism = "hsa")
-  print(barplot(enrich_kegg, showCategory = 10, title = paste("KEGG Enrichment:", comp)))
-}
-```
 
-### DEG Table
-```{r dt-deg, eval=knitr::is_html_output()}
-for (comp in names(deg_filtered)) {
-  DT::datatable(
-    deg_filtered[[comp]] %>% arrange(adj.P.Val) %>% head(20),
-    caption = htmltools::tags$caption(style = 'caption-side: top;', paste("Top DEGs:", comp)),
-    options = list(pageLength = 10, scrollX = TRUE)
-  )
-}
+
