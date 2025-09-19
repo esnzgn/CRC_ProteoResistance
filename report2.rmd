@@ -27,6 +27,7 @@ library(DT)
 library(reshape2)
 library(factoextra)
 library(patchwork) 
+library(pheatmap)
 ```
 
 ## 1. Load and prepare data
@@ -363,4 +364,57 @@ for (comp in names(go_results)) {
 
 
 
+```
+
+```{r deg_heatmaps_per_drug, fig.height=8, fig.width=11, results='asis'}
+# Extract normalized expression matrix and row gene symbols
+norm_mat <- assay(qf[["norm_proteins"]])
+gene_symbols <- rowData(qf[["norm_proteins"]])$gene_name
+rownames(norm_mat) <- gene_symbols
+
+# Sample metadata
+cd <- as.data.frame(colData(qf[["norm_proteins"]]))
+
+# Identify drug names (exclude "Parental")
+drug_names <- unique(cd$treatment)
+drug_names <- drug_names[drug_names != "Parental"]
+
+# Loop over each drug
+for (drug in drug_names) {
+  
+  # Get DEGs from both cell lines for this drug
+  relevant_comparisons <- grep(paste0("_", drug, "_vs_Parental"), names(deg_filtered), value = TRUE)
+  deg_genes <- unique(unlist(lapply(deg_filtered[relevant_comparisons], \(df) df$gene_symbol)))
+  deg_genes <- deg_genes[deg_genes %in% rownames(norm_mat)]
+
+  # Skip if not enough genes
+  if (length(deg_genes) < 5) {
+    cat(paste0("### 🔬 Not enough DEGs found for ", drug, " across both cell lines.\n\n"))
+    next
+  }
+
+  # Subset expression matrix and metadata
+  mat_sub <- norm_mat[deg_genes, ]
+  sample_idx <- cd$treatment %in% c("Parental", drug)
+  mat_sub <- mat_sub[, sample_idx]
+  ann_col <- cd[sample_idx, c("cell_line", "treatment")]
+  rownames(ann_col) <- colnames(mat_sub)
+
+  # Scale rows
+  mat_scaled <- t(scale(t(mat_sub)))
+
+  # Plot
+  cat(paste0("### 🔥 Heatmap for ", drug, " Resistance (vs Parental)\n"))
+  pheatmap(mat_scaled,
+           annotation_col = ann_col,
+           show_rownames = TRUE,
+           show_colnames = TRUE,
+           cluster_rows = TRUE,
+           cluster_cols = TRUE,
+           fontsize_row = 5,           # Smaller gene label font
+           fontsize_col = 7,           # Slightly smaller sample labels
+           angle_col = 45,             # Rotate column labels
+           color = colorRampPalette(c("navy", "white", "firebrick3"))(100),
+           main = paste("DEGs in", drug, "resistant vs Parental (Both Cell Lines)"))
+}
 ```
