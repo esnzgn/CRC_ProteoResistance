@@ -43,11 +43,11 @@
 -   [x] rowData: includes protein_id, gene_name, description
 -   [x] colData: includes condition for downstream modeling
 -   [x] alidObject(se) returns TRUE → no internal issues
-- [ ] Peptide-to-Protein Summarization
-- [ ] Statistical Analysis (MSqRob2 or MSqRob2TMT)
-- [ ] DEG Detection Across Contrasts
-- [ ] Visualization (Volcano, Heatmap, PCA)
-- [ ] Functional Enrichment (GO/KEGG using clusterProfiler)
+- [x] Peptide-to-Protein Summarization
+- [x] Statistical Analysis (MSqRob2 or MSqRob2TMT)
+- [x] DEG Detection Across Contrasts
+- [x] Visualization (Volcano, Heatmap, PCA)
+- [x] Functional Enrichment (GO/KEGG using clusterProfiler)
 
 ## 📁 Folder Overview
 
