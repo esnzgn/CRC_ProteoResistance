@@ -1,5 +1,3 @@
-#  odl on
-
 # CRC_ProteoResistance
 
 **CRC_ProteoResistance** is an R-based analysis project focused on proteomic changes in colorectal cancer cell lines under drug resistance conditions to the MTHFD1/2 inhibitor **TH9619** and **methotrexate (MTX)**. The study involves TMT-based quantification of six cell lines (parental and resistant lines of HCT116 and SW620).
